@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>講師評価支援ツール v2</title>
+<style>
+  :root{
+    --ink:#1c2733; --ink-soft:#5a6b7c; --paper:#f5f7f9; --card:#fff;
+    --line:#dde4ea; --navy:#234e70; --navy-deep:#16344d; --amber:#c97f1e;
+    --good:#2e7d4f; --warn:#b3541e; --good-bg:#e8f3ec; --warn-bg:#faeee6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;background:var(--paper);color:var(--ink);line-height:1.7;font-size:15px;padding-bottom:80px}
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px}
+  header{background:var(--navy-deep);color:#fff;padding:14px 0 12px;margin-bottom:16px}
+  header .wrap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  header h1{font-size:17px;font-weight:700;letter-spacing:.06em}
+  header .sub{font-size:11.5px;opacity:.75}
+  .steps{display:flex;gap:4px;margin:0 0 18px}
+  .steps span{flex:1;height:5px;border-radius:3px;background:var(--line);transition:background .25s}
+  .steps span.done{background:var(--navy)} .steps span.now{background:var(--amber)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 16px;margin-bottom:14px}
+  .card h2{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .card h2 .num{background:var(--navy);color:#fff;border-radius:6px;font-size:13px;padding:1px 8px;flex:none}
+  .card .desc{font-size:12.5px;color:var(--ink-soft);margin-bottom:12px}
+  .legend{font-size:11.5px;color:var(--ink-soft);background:var(--paper);border-radius:8px;padding:8px 12px;margin-bottom:14px;line-height:1.9}
+  .legend b{color:var(--navy)}
+  label.fld{display:block;font-size:13px;font-weight:600;margin:12px 0 4px}
+  input[type=text],textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:15px;font-family:inherit;background:#fff}
+  input[type=text]:focus,textarea:focus{outline:2px solid var(--navy);border-color:var(--navy)}
+  textarea{min-height:110px;line-height:1.7;resize:vertical}
+  .aspect{margin-bottom:14px}
+  .aspect .aname{font-size:13px;font-weight:600;margin-bottom:6px;color:var(--navy-deep)}
+  .aspect .aname small{font-weight:400;color:var(--ink-soft)}
+  .opts{display:flex;flex-direction:column;gap:6px}
+  .opts button{text-align:left;border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;cursor:pointer;line-height:1.55;transition:all .12s;color:var(--ink)}
+  .opts button:hover{border-color:var(--navy)}
+  .opts button.sel{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .opts button .pt{font-size:11px;opacity:.55;margin-left:6px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .chips button{border:1px solid var(--line);background:#fff;border-radius:18px;padding:6px 14px;font-size:13px;font-family:inherit;cursor:pointer;color:var(--ink)}
+  .chips button.sel{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .scorebar{display:flex;align-items:center;gap:12px;background:var(--paper);border-radius:8px;padding:10px 12px;margin-top:8px}
+  .scorebar .slabel{font-size:12.5px;font-weight:600;flex:none}
+  .scorebar input[type=range]{flex:1;accent-color:var(--navy)}
+  .scorebar .sval{font-size:22px;font-weight:800;color:var(--navy);min-width:64px;text-align:right;font-variant-numeric:tabular-nums}
+  .scorebar .sval small{font-size:12px;color:var(--ink-soft);font-weight:600}
+  .autonote{font-size:11.5px;color:var(--ink-soft);margin-top:4px}
+  .genbox{margin-top:12px}
+  .genbox .ghead{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+  .genbox .ghead span{font-size:13px;font-weight:600}
+  .mini{font-size:12px;border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:6px;padding:3px 10px;cursor:pointer;font-family:inherit}
+  .mini:hover{background:var(--paper)}
+  .grp{font-size:12px;font-weight:700;color:var(--navy-deep);margin:14px 0 2px;letter-spacing:.04em}
+  .chk{display:flex;align-items:flex-start;gap:8px;padding:6px 4px;font-size:14px;cursor:pointer}
+  .chk input{margin-top:5px;accent-color:var(--navy);width:16px;height:16px;flex:none}
+  .inline-num{width:70px;border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:14px;margin:0 4px}
+  .nav{display:flex;justify-content:space-between;gap:10px;margin:18px 0 30px}
+  .btn{border:none;border-radius:9px;padding:12px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.04em}
+  .btn.primary{background:var(--navy);color:#fff} .btn.primary:hover{background:var(--navy-deep)}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink-soft)}
+  .btn.amber{background:var(--amber);color:#fff}
+  .cf-item{border-bottom:1px solid var(--line);padding:12px 0}
+  .cf-item:last-child{border-bottom:none}
+  .cf-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+  .cf-head b{font-size:14px}
+  .cf-score{background:var(--good-bg);color:var(--good);font-weight:800;font-size:13px;border-radius:6px;padding:1px 9px}
+  .cf-score.low{background:var(--warn-bg);color:var(--warn)}
+  .cf-text{font-size:13.5px;white-space:pre-wrap}
+  .copybtn{margin-left:auto;font-size:11.5px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 10px;cursor:pointer;color:var(--navy);font-family:inherit;flex:none}
+  .copybtn.copied{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+  .hist-row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;font-size:13.5px}
+  .hist-row .meta{flex:1;min-width:0}
+  .hist-row .meta b{display:block} .hist-row .meta small{color:var(--ink-soft)}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;font-size:13px;border-radius:8px;padding:9px 18px;opacity:0;transition:all .25s;pointer-events:none;z-index:50}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .notice{font-size:12px;color:var(--ink-soft);background:var(--paper);border-radius:8px;padding:9px 12px;margin-top:10px}
+  @media(max-width:480px){.scorebar{flex-wrap:wrap}.scorebar input[type=range]{width:100%;order:3}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>講師評価支援ツール</h1>
+  <span class="sub">講習会派遣者用｜7点＝標準（安定した講義）を基準とした査定</span>
+</div></header>
+<div class="wrap">
+  <div class="steps" id="steps"></div>
+  <div id="screen"></div>
+  <div class="nav" id="nav"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   評価項目マスタ（2026年度 実査定データから再設計）
+   採点アンカー: 10-9模範 / 8良好 / 7標準 / 6-5軽微な課題 / 4-3明確な課題 / 2-1重大
+   opts: t=ボタン表示 s=点 g=講評文 i=改善提案文(課題時) f=⑦申し送りフラグ
+============================================================ */
+const ITEMS = [
+{ id:"q1", num:"①", name:"講義の充実度",
+  desc:"進め方・まとめ方・受講者の巻き込みを観察。観察できなかった観点は未選択のままでOK",
+  aspects:[
+  { name:"説明の仕方", opts:[
+    {t:"自分の言葉で噛み砕き、具体例・現場の話を交えていた", s:9, g:"テキストの読み上げに頼らず、自分の言葉や具体例・現場の話を交えて説明しており、受講者がイメージしやすい講義であった"},
+    {t:"テキストに沿った標準的な説明だった", s:7, g:"テキストに沿った安定した説明であった"},
+    {t:"テキストの読み上げが中心だった", s:4, g:"テキストの読み上げが中心であった", i:"言い換えや具体例を交えると受講者の理解が深まると思われる", f:"説明がテキスト読み上げ中心"},
+  ]},
+  { name:"重要箇所の示し方", opts:[
+    {t:"出題傾向に触れ、マーキング箇所を明確に指示していた", s:9, g:"出題傾向に触れながらマーキング箇所を明確に指示しており、重要箇所が分かりやすかった"},
+    {t:"重要箇所は概ね示されていた", s:7, g:"重要箇所は概ね示されていた"},
+    {t:"どこが重要か受講者に伝わりにくかった", s:4, g:"どこが重要なのかが受講者に伝わりにくい場面があった", i:"マーキング箇所の明示や強調を増やすと伝わりやすくなる", f:"重要箇所の指示が不明確"},
+  ]},
+  { name:"受講者の巻き込み", opts:[
+    {t:"考えさせる・解かせる・メモを取らせる時間を確保していた", s:9, g:"受講者に考えさせる・手を動かさせる時間を確保し、受け身にさせない工夫が見られた"},
+    {t:"部分的に受講者への働きかけがあった", s:7, g:"受講者への働きかけは部分的に見られた"},
+    {t:"一方的に進み、受講者は受け身だった", s:5, g:"講義は一方向になりがちで、受講者は受け身であった", i:"問いかけや演習の時間を挟むと集中が持続しやすい"},
+  ]},
+  { name:"進行の安定感", opts:[
+    {t:"構成が練られ、淀みなく進行した", s:9, g:"構成が練られており、淀みのない進行であった"},
+    {t:"安定した進行だった", s:7, g:"安定した進行であった"},
+    {t:"ページを見失う・沈黙が生じるなど準備不足を感じた", s:4, g:"該当ページを見失う・沈黙が生じるなど、準備不足を感じる場面があった", i:"事前の進行確認で改善が見込まれる", f:"進行に準備不足が見られた"},
+  ]},
+]},
+{ id:"q2", num:"②", name:"問題の解説",
+  desc:"演習・過去問等の解説について観察",
+  aspects:[
+  { name:"解説の範囲", opts:[
+    {t:"予定していた問題をすべて解説した", s:9, g:"予定していた問題はすべて解説されていた"},
+    {t:"主要な問題に絞って解説した", s:6, g:"解説は主要な問題に絞られていた"},
+    {t:"駆け足・未解説の問題が残った", s:3, g:"時間の不足により解説が駆け足になり、未解説の問題が残った", i:"時間配分の調整により全問カバーが望まれる", f:"問題解説に未消化あり"},
+  ]},
+  { name:"解かせる時間", opts:[
+    {t:"受講者に解かせる時間を取ってから解説した", s:9, g:"受講者に問題を解かせる時間を取ってから解説しており、理解が定着しやすい進め方であった"},
+    {t:"問題提示後すぐに解説に入った", s:6, g:"問題の提示後すぐに解説に入る形式であった", i:"受講者が考える時間を一息挟むとより効果的と思われる"},
+    {t:"解説のみで答え合わせに近かった", s:4, g:"解説は答え合わせに近い形にとどまった", f:"問題演習の時間が不足"},
+  ]},
+  { name:"解説の分かりやすさ", opts:[
+    {t:"根拠や考え方まで丁寧に解説した", s:9, g:"正解に至る根拠や考え方まで丁寧に解説されていた"},
+    {t:"概ね理解できる解説だった", s:7, g:"概ね理解できる水準の解説であった"},
+    {t:"解説が浅く理解しづらかった", s:4, g:"解説が浅く、受講者には理解しづらい内容であった", f:"問題解説の分かりやすさに課題"},
+  ]},
+  { name:"誤答肢の扱い", opts:[
+    {t:"誤答肢についても理由を説明した", s:9, g:"誤答肢についても誤りである理由が説明されていた"},
+    {t:"一部の誤答肢に触れた", s:7, g:"誤答肢への言及は一部にとどまった"},
+    {t:"正解肢のみの解説だった", s:5, g:"解説は正解肢のみであった"},
+  ]},
+]},
+{ id:"q3", num:"③", name:"字の分かりやすさ",
+  desc:"板書・投影資料（PPT/PDF/iPad）の文字・見やすさを観察",
+  aspects:[
+  { name:"文字の可読性", opts:[
+    {t:"文字が大きく、後方席からも読みやすかった", s:9, g:"板書・投影資料の文字は大きく、後方席からも読み取りやすかった"},
+    {t:"概ね読める水準だった", s:7, g:"文字は概ね読める水準であった"},
+    {t:"文字が小さい・ぼやける等、読みにくい箇所があった", s:4, g:"文字が小さい・ぼやける等、読みにくい箇所があった", i:"文字サイズの拡大や資料の作り直しを検討したい", f:"投影資料・板書の視認性に課題"},
+  ]},
+  { name:"資料・板書の作り", opts:[
+    {t:"スライド・板書が整理され、作り込まれていた", s:9, g:"スライド・板書は整理されており、よく作り込まれていた"},
+    {t:"標準的な作りだった", s:7, g:"資料・板書の作りは標準的であった"},
+    {t:"テキスト貼り付け・書き足しの重なり等で見づらかった", s:4, g:"テキストの貼り付けや板書の書き足しの重なりにより見づらい部分があった", i:"重要部分を抜粋したスライド化などで改善が見込まれる"},
+  ]},
+  { name:"会場との相性", opts:[
+    {t:"会場の広さでも問題なく視認できた", s:8, g:"会場の広さにおいても視認性に問題はなかった"},
+    {t:"広い会場では後方席から見えづらかった", s:5, g:"会場が広いため、後方席からは見えづらい部分があった", i:"出力紙の配布や席移動の案内などの対応が考えられる", f:"広い会場では後方からの視認性に課題"},
+    {t:"多くの席から見づらい状態だった", s:3, g:"多くの席から見づらい状態であった", f:"投影・板書の視認性に大きな課題"},
+  ]},
+]},
+{ id:"q4", num:"④", name:"話し方",
+  desc:"声量・明瞭さ／スピード／抑揚（棒読み）／口癖を観察",
+  aspects:[
+  { name:"声量・明瞭さ", opts:[
+    {t:"声が大きくハキハキとして聞き取りやすかった", s:9, g:"声が大きくハキハキとしており、聞き取りやすい話し方であった"},
+    {t:"概ね聞き取れた", s:7, g:"概ね聞き取れる明瞭さであった"},
+    {t:"終盤に声量低下・声枯れが見られた", s:5, g:"長時間の講義により、終盤に声量の低下が見られた", f:"終盤の声量低下あり（ピンマイク・音量調整で対応可）"},
+    {t:"声が小さい・くぐもる等、聞き取りにくい箇所があった", s:4, g:"声が小さい・くぐもる等、聞き取りにくい箇所があった", i:"マイクの音量調整等の運営フォローも有効", f:"声量・明瞭さに課題（マイク調整等の対応要）"},
+  ]},
+  { name:"話すスピード", opts:[
+    {t:"適切なスピードだった", s:8, g:"話すスピードは適切であった"},
+    {t:"やや早口（またはゆっくり）な場面があった", s:6, g:"場面によりやや早口（またはゆっくり）に感じる箇所があった"},
+    {t:"速すぎて受講者がついていけない様子だった", s:3, g:"スピードが速く、受講者がついていくのに精一杯な様子であった", f:"講義スピードが速く受講者が追いつけない場面あり"},
+  ]},
+  { name:"抑揚・メリハリ", opts:[
+    {t:"強弱・間があり聞きやすかった", s:9, g:"声の強弱や間の取り方にメリハリがあり、聞きやすかった"},
+    {t:"標準的だった", s:7, g:"抑揚は標準的であった"},
+    {t:"棒読み・単調で受講者の集中が切れやすかった", s:4, g:"棒読み気味で単調になりがちであり、受講者の集中が切れやすい話し方であった", i:"声の強弱や問いかけを交えるとメリハリが生まれる", f:"単調な話し方による受講者の集中低下あり"},
+  ]},
+  { name:"口癖・言葉遣い", opts:[
+    {t:"特に気にならなかった", s:8, g:"口癖や言葉遣いで気になる点はなかった"},
+    {t:"フィラー・口癖がやや気になった", s:5, g:"フィラーワードや口癖がやや気になった"},
+    {t:"言葉遣いに不適切な表現があった", s:2, g:"言葉遣いに不適切な表現が見られた", f:"言葉遣いに不適切な表現あり（指摘・改善状況の確認要）"},
+  ]},
+]},
+{ id:"q5", num:"⑤", name:"熱意",
+  desc:"受講者への働きかけ・合格への意識づけ・準備姿勢を観察",
+  aspects:[
+  { name:"受講者への働きかけ", opts:[
+    {t:"問いかけ・声掛け・巡回など積極的だった", s:9, g:"受講者への問いかけや休憩明けの声掛け、巡回など、積極的な働きかけが見られた"},
+    {t:"時折働きかけがあった", s:7, g:"受講者への働きかけは時折見られた"},
+    {t:"働きかけはほとんどなかった", s:4, g:"受講者への働きかけはほとんど見られなかった"},
+  ]},
+  { name:"合格への意識づけ", opts:[
+    {t:"出題傾向・試験対策への言及が多かった", s:9, g:"出題傾向や試験対策への言及が多く、受講者の合格への意識を高める内容であった"},
+    {t:"一部に試験対策への言及があった", s:7, g:"試験対策への言及は一部にとどまった"},
+    {t:"試験への意識づけは感じられなかった", s:5, g:"合格への意識づけは感じられなかった"},
+  ]},
+  { name:"準備・講義への姿勢", opts:[
+    {t:"独自資料の作成・事前板書など意欲的だった", s:9, g:"独自資料の作成や事前の板書準備など、意欲的な姿勢がうかがえた"},
+    {t:"標準的な準備・姿勢だった", s:7, g:"準備・姿勢は標準的であった"},
+    {t:"淡々と消化している印象・準備不足を感じた", s:4, g:"講義を淡々と消化している印象で、準備の不足を感じた", f:"講義姿勢・準備に課題"},
+  ]},
+]},
+{ id:"q6", num:"⑥", name:"時間配分",
+  desc:"説明項目の指定時間（講義要点）との整合性を観察",
+  aspects:[
+  { name:"終了時刻", opts:[
+    {t:"定刻どおりに終了した", s:9, g:"講義は定刻どおりに終了した"},
+    {t:"5分以内の超過・早終いだった", s:7, g:"終了時刻は定刻から5分以内のずれに収まった"},
+    {t:"10分前後の超過・早終いがあった", s:5, g:"終了時刻に10分前後のずれが生じた", f:"終了時刻に10分前後のずれあり"},
+    {t:"大幅な超過・早引けがあった", s:2, g:"終了時刻に大幅なずれが生じた", f:"終了時刻に大幅なずれあり（要改善）"},
+  ]},
+  { name:"進行ペース", opts:[
+    {t:"全体を通して均等なペースだった", s:9, g:"全体を通して均等なペースで進行した"},
+    {t:"終盤が駆け足になった", s:5, g:"終盤が駆け足になる傾向があった", i:"前半の時間配分の見直しで解消が見込まれる", f:"終盤駆け足の傾向"},
+    {t:"特定項目に偏り、未説明の項目があった", s:3, g:"特定項目に時間が偏り、説明されなかった項目があった", f:"未説明の項目あり（講義要点との整合の確認要）"},
+  ]},
+  { name:"休憩の取り方", opts:[
+    {t:"適切な間隔で休憩を取っていた", s:8, g:"休憩は適切な間隔で取られていた"},
+    {t:"間隔が長い等、取り方に課題があった", s:5, g:"休憩の間隔が長いなど、取り方に課題が見られた", i:"キリが悪くても一定間隔での休憩が望ましい", f:"休憩の取り方に課題（間隔・タイミング）"},
+  ]},
+]},
+];
+
+/* 使用機材・講義スタイル（⑦冒頭に自動反映） */
+const EQUIP = ["ホワイトボード・板書","パワーポイント","PDF投影","iPad・タブレット","配布資料あり","PC・投影なし","リモート併用"];
+
+/* ⑦ 特記チェック（グループ別） */
+const SITU = [
+ {grp:"時間", key:"chien",  label:"開始が遅れた", withMin:true, text:m=>`開始が${m||"数"}分程度遅れた`},
+ {grp:"時間", key:"choka",  label:"講義時間の超過があった", withMin:true, text:m=>`講義時間に${m||"数"}分程度の超過があった`},
+ {grp:"時間", key:"hayabi", label:"早引け・早終いがあった", withMin:true, text:m=>`予定より${m||"数"}分程度早く終了した`},
+ {grp:"機材・会場", key:"kizai", label:"機材・映像トラブルがあった", text:()=>"機材・映像のトラブルが発生した"},
+ {grp:"機材・会場", key:"kaijo", label:"会場設備（音響・スクリーン等）に起因する問題があった", text:()=>"会場設備に起因する問題があった"},
+ {grp:"配布資料", key:"fubi", label:"配布資料に不備・不足があった", text:()=>"配布資料に不備・不足があった"},
+ {grp:"配布資料", key:"goji", label:"配布資料に誤字・抜け漏れがあった", text:()=>"配布資料に誤字・抜け漏れが見られた"},
+ {grp:"配布資料", key:"konran", label:"資料が多く受講者が混乱した", text:()=>"配布資料が多く、受講者がどの資料を参照すべきか混乱する場面があった"},
+ {grp:"配布資料", key:"yobo", label:"受講者から資料配布の要望があった", text:()=>"受講者から投影資料の配布要望があった"},
+ {grp:"講義内容", key:"dassen", label:"脱線・前置きが長かった", text:()=>"講義内容からの脱線や長い前置きが見られた"},
+ {grp:"受講者の様子", key:"shuchu", label:"集中して受講していた", pos:true, text:()=>"受講者は集中して受講していた"},
+ {grp:"受講者の様子", key:"inemuri", label:"居眠りが目立った", text:()=>"居眠りをする受講者が目立った"},
+ {grp:"受講者の様子", key:"shigo", label:"私語が目立った", text:()=>"受講者の私語が目立った"},
+];
+
+/* ============================================================ */
+const blank = () => ({
+  date: new Date().toISOString().slice(0,10),
+  koushi:"", kougi:"",
+  equip: EQUIP.map(()=>false),
+  items: ITEMS.map(it=>({ id:it.id, sel:it.aspects.map(()=>null), score:null, manualScore:false, text:"" })),
+  situ: SITU.map(()=>false),
+  situMin:{chien:"",choka:"",hayabi:""},
+  opsText:"",   // 運営側で行った対応
+  situText:""
+});
+let rec = blank();
+let step = 0; const TOTAL = 9;
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove("show"),1800);}
+const store = {
+  load(){ try{ return JSON.parse(localStorage.getItem("hyouka_hist")||"[]"); }catch(e){ return this._m||[]; } },
+  save(l){ try{ localStorage.setItem("hyouka_hist", JSON.stringify(l)); }catch(e){ this._m=l; } }
+};
+
+/* ---------- 採点・文章生成 ---------- */
+function calcScore(ii){
+  const it=ITEMS[ii], r=rec.items[ii];
+  const p=r.sel.map((si,ai)=>si==null?null:it.aspects[ai].opts[si].s).filter(v=>v!=null);
+  if(!p.length) return null;
+  return Math.max(1,Math.min(10,Math.round(p.reduce((a,b)=>a+b,0)/p.length)));
+}
+
+/* 講評文：良かった点 → 標準点 → 課題点（＋改善提案）の順で常に同じ構成（イーブン生成） */
+function genItemText(ii){
+  const it=ITEMS[ii], r=rec.items[ii];
+  const good=[], mid=[], bad=[];
+  r.sel.forEach((si,ai)=>{
+    if(si==null) return;
+    const o=it.aspects[ai].opts[si];
+    const sent = o.g + (o.i ? `。${o.i}` : "");
+    if(o.s>=8) good.push(o.g);
+    else if(o.s>=6) mid.push(o.g);
+    else bad.push(sent);
+  });
+  let s="";
+  if(good.length) s += good.join("。") + "。";
+  if(mid.length)  s += mid.join("。") + "。";
+  if(bad.length)  s += (good.length||mid.length ? "一方、" : "") + bad.join("。") + "。";
+  return s;
+}
+
+/* ⑦申し送り：①機材スタイル ②特記事象 ③良かった点(最大2) ④課題申し送り ⑤運営対応 ⑥締め */
+function genSituText(){
+  const blocks=[];
+  // 1) 使用機材
+  const eq = EQUIP.filter((_,i)=>rec.equip[i]);
+  if(eq.length) blocks.push(eq.join("・")+"を使用。");
+  // 2) 特記事象（時間・機材・資料・講義内容・受講者）
+  const situLines = SITU.map((s,i)=>rec.situ[i]?s.text(s.withMin?rec.situMin[s.key]:undefined):null).filter(Boolean);
+  if(situLines.length) blocks.push(situLines.join("。")+"。");
+  // 3) 良かった点（s>=9の選択から最大2件）
+  const goods=[];
+  ITEMS.forEach((it,ii)=>rec.items[ii].sel.forEach((si,ai)=>{
+    if(si!=null){const o=it.aspects[ai].opts[si]; if(o.s>=9) goods.push(o.g);}
+  }));
+  if(goods.length) blocks.push("良かった点として、"+goods.slice(0,2).join("。")+"。");
+  // 4) 課題・申し送り（フラグ）
+  const flags=[];
+  ITEMS.forEach((it,ii)=>rec.items[ii].sel.forEach((si,ai)=>{
+    if(si!=null){const o=it.aspects[ai].opts[si]; if(o.f) flags.push(`${it.num}${o.f}`);}
+  }));
+  if(flags.length) blocks.push("申し送り事項："+flags.join("／")+"。");
+  // 5) 運営対応
+  if(rec.opsText.trim()) blocks.push("運営対応として、"+rec.opsText.trim()+"。");
+  // 6) 締め
+  if(flags.length || SITU.some((s,i)=>rec.situ[i]&&!s.pos)){
+    blocks.push("次回派遣者は上記の改善状況の確認をお願いしたい。");
+  }else{
+    blocks.push("特筆すべき問題はなく、概ね良好な講義運営であった。");
+  }
+  return blocks.join("\n");
+}
+
+/* ---------- 画面 ---------- */
+function renderSteps(){
+  $("#steps").innerHTML = Array.from({length:TOTAL},(_,i)=>`<span class="${i<step?'done':i===step?'now':''}"></span>`).join("");
+}
+function render(){
+  renderSteps();
+  const scr=$("#screen"), nav=$("#nav");
+  if(step===0) renderBasic(scr);
+  else if(step<=6) renderItem(scr, step-1);
+  else if(step===7) renderSitu(scr);
+  else renderConfirm(scr);
+  let html = step>0 ? `<button class="btn ghost" onclick="go(-1)">← 戻る</button>` : `<span></span>`;
+  html += step<8 ? `<button class="btn primary" onclick="go(1)">次へ →</button>` : `<button class="btn amber" onclick="saveRec()">この評価を保存</button>`;
+  nav.innerHTML=html;
+  window.scrollTo({top:0});
+}
+
+function renderBasic(scr){
+  const hist=store.load();
+  scr.innerHTML=`
+  <div class="card">
+    <h2>基本情報</h2>
+    <p class="desc">講師名・講義名（科目）は毎回手入力します。</p>
+    <label class="fld">実施日</label>
+    <input type="text" id="f-date" value="${esc(rec.date)}">
+    <label class="fld">講師名</label>
+    <input type="text" id="f-koushi" value="${esc(rec.koushi)}" placeholder="例：山田 太郎">
+    <label class="fld">講義名（科目）</label>
+    <input type="text" id="f-kougi" value="${esc(rec.kougi)}" placeholder="例：電気工学／施工管理法（午前） など">
+    <label class="fld">使用機材・講義スタイル（複数選択可・⑦の冒頭に自動反映）</label>
+    <div class="chips">${EQUIP.map((e,i)=>`<button class="${rec.equip[i]?'sel':''}" onclick="equip(${i})">${esc(e)}</button>`).join("")}</div>
+  </div>
+  ${hist.length?`
+  <div class="card">
+    <h2>保存済みの評価（この端末）</h2>
+    <div>${hist.map((h,i)=>`
+      <div class="hist-row">
+        <div class="meta"><b>${esc(h.koushi)}｜${esc(h.kougi)}</b><small>${esc(h.date)}　合計 ${h.total??"-"}/60</small></div>
+        <button class="mini" onclick="loadHist(${i})">開く</button>
+        <button class="mini" onclick="delHist(${i})">削除</button>
+      </div>`).join("")}</div>
+    <button class="mini" onclick="exportAll()">全履歴をJSONでダウンロード</button>
+  </div>`:""}`;
+  ["date","koushi","kougi"].forEach(k=>$( `#f-${k}`).addEventListener("input",e=>rec[k]=e.target.value));
+}
+
+function renderItem(scr, ii){
+  const it=ITEMS[ii], r=rec.items[ii];
+  scr.innerHTML=`
+  <div class="card">
+    <h2><span class="num">${it.num}</span>${esc(it.name)}</h2>
+    <p class="desc">${esc(it.desc)}</p>
+    <div class="legend"><b>採点の目安</b>：9-10 模範的｜8 良好｜<b>7 標準（安定した講義）</b>｜5-6 軽微な課題｜3-4 明確な課題｜1-2 重大な問題</div>
+    ${it.aspects.map((a,ai)=>`
+      <div class="aspect">
+        <div class="aname">${esc(a.name)} <small>（観察できなければ未選択でOK）</small></div>
+        <div class="opts">${a.opts.map((o,oi)=>`
+          <button class="${r.sel[ai]===oi?'sel':''}" onclick="pick(${ii},${ai},${oi})">${esc(o.t)}<span class="pt">${o.s}pt</span></button>`).join("")}
+        </div>
+      </div>`).join("")}
+    <div class="scorebar">
+      <span class="slabel">点数</span>
+      <input type="range" min="1" max="10" step="1" id="sc-range" value="${r.score??7}" ${r.score==null?"disabled":""} oninput="manualScore(${ii},this.value)">
+      <span class="sval" id="sc-val">${r.score??"–"}<small> /10</small></span>
+    </div>
+    <p class="autonote" id="sc-note">${r.score==null?"選択すると自動で点数が入ります（スライダーで調整可）":(r.manualScore?"手動調整済み":"選択内容から自動算出（スライダーで調整可）")}</p>
+    <div class="genbox">
+      <div class="ghead">
+        <span>講評文（良かった点→標準→課題の順で自動生成 → 自由に編集）</span>
+        <button class="mini" onclick="regen(${ii})">選択内容から再生成</button>
+      </div>
+      <textarea id="gen-text" placeholder="観点を選択すると下書きが生成されます">${esc(r.text)}</textarea>
+    </div>
+  </div>`;
+  $("#gen-text").addEventListener("input",e=>r.text=e.target.value);
+}
+
+function renderSitu(scr){
+  let lastGrp="";
+  const rows = SITU.map((s,i)=>{
+    const head = s.grp!==lastGrp ? `<div class="grp">${esc(s.grp)}</div>` : "";
+    lastGrp = s.grp;
+    return head+`<label class="chk">
+      <input type="checkbox" ${rec.situ[i]?"checked":""} onchange="situChk(${i},this.checked)">
+      <span>${esc(s.label)}${s.withMin?`（約 <input type="text" class="inline-num" inputmode="numeric" value="${esc(rec.situMin[s.key])}" onclick="event.preventDefault()" oninput="situMin('${s.key}',this.value)"> 分）`:""}</span>
+    </label>`;
+  }).join("");
+  scr.innerHTML=`
+  <div class="card">
+    <h2><span class="num">⑦</span>講義の状況（申し送り）</h2>
+    <p class="desc">次の派遣者が把握・改善できるよう記録します。使用機材＋下のチェック＋①〜⑥の選択内容から、常に同じ構成（機材→特記→良かった点→申し送り→運営対応→締め）で自動生成されます。</p>
+    ${rows}
+    <label class="fld">運営側で行った対応（任意：マイク音量調整、席移動アナウンス、ホワイトボード追加 等）</label>
+    <input type="text" id="f-ops" value="${esc(rec.opsText)}" placeholder="例：ピンマイクの音量を上げて対応した">
+    <div class="genbox">
+      <div class="ghead">
+        <span>申し送り文（自動生成 → 自由に編集）</span>
+        <button class="mini" onclick="regenSitu()">再生成</button>
+      </div>
+      <textarea id="situ-text" style="min-height:170px">${esc(rec.situText)}</textarea>
+    </div>
+  </div>`;
+  $("#f-ops").addEventListener("input",e=>{rec.opsText=e.target.value;});
+  $("#situ-text").addEventListener("input",e=>rec.situText=e.target.value);
+}
+
+function renderConfirm(scr){
+  const total=rec.items.reduce((a,r)=>a+(r.score||0),0);
+  const rows=ITEMS.map((it,ii)=>{
+    const r=rec.items[ii];
+    return `<div class="cf-item">
+      <div class="cf-head"><b>${it.num} ${esc(it.name)}</b>
+        <span class="cf-score ${(r.score||0)<6?'low':''}">${r.score??"–"} /10</span>
+        <button class="copybtn" onclick="copyText(this,${ii})">コピー</button></div>
+      <div class="cf-text">${esc(r.text)||"<i>（講評文なし）</i>"}</div>
+    </div>`;}).join("");
+  scr.innerHTML=`
+  <div class="card">
+    <h2>内容確認</h2>
+    <p class="desc">${esc(rec.date)}｜講師：<b>${esc(rec.koushi)||"（未入力）"}</b>｜講義：<b>${esc(rec.kougi)||"（未入力）"}</b>｜合計 <b>${total}/60</b></p>
+    ${rows}
+    <div class="cf-item">
+      <div class="cf-head"><b>⑦ 講義の状況</b><button class="copybtn" onclick="copyText(this,'situ')">コピー</button></div>
+      <div class="cf-text">${esc(rec.situText)||"<i>（記載なし）</i>"}</div>
+    </div>
+    <div class="notice">Microsoft Forms へは各項目の「コピー」→ Forms の回答欄へ貼り付け。「全文コピー」で一括コピーも可能です。</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="mini" onclick="copyAll()">全文コピー（Forms貼り付け用）</button>
+      <button class="mini" onclick="exportOne()">この評価をJSONでダウンロード</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- 操作 ---------- */
+function go(d){
+  if(d>0 && step===0 && (!rec.koushi.trim()||!rec.kougi.trim())){toast("講師名と講義名を入力してください");return;}
+  step+=d;
+  if(step===7 && !rec.situText) rec.situText=genSituText();
+  render();
+}
+function equip(i){rec.equip[i]=!rec.equip[i];render();}
+function pick(ii,ai,oi){
+  const r=rec.items[ii];
+  r.sel[ai]=(r.sel[ai]===oi)?null:oi;
+  if(!r.manualScore) r.score=calcScore(ii);
+  r.text=genItemText(ii);
+  render();
+}
+function manualScore(ii,v){
+  rec.items[ii].score=+v; rec.items[ii].manualScore=true;
+  $("#sc-val").innerHTML=`${v}<small> /10</small>`;
+  $("#sc-note").textContent="手動調整済み";
+}
+function regen(ii){
+  rec.items[ii].text=genItemText(ii);
+  rec.items[ii].manualScore=false;
+  rec.items[ii].score=calcScore(ii);
+  render(); toast("再生成しました");
+}
+function situChk(i,on){rec.situ[i]=on;rec.situText=genSituText();render();}
+function situMin(k,v){rec.situMin[k]=v;rec.situText=genSituText();const t=$("#situ-text");if(t)t.value=rec.situText;}
+function regenSitu(){rec.situText=genSituText();render();toast("再生成しました");}
+
+function saveRec(){
+  const total=rec.items.reduce((a,r)=>a+(r.score||0),0);
+  const hist=store.load();
+  hist.unshift({...JSON.parse(JSON.stringify(rec)),total,savedAt:new Date().toISOString()});
+  store.save(hist);
+  toast("保存しました");
+  rec=blank(); step=0; render();
+}
+function loadHist(i){const h=store.load()[i];if(!h)return;rec=JSON.parse(JSON.stringify(h));step=8;render();}
+function delHist(i){if(!confirm("この履歴を削除しますか？"))return;const h=store.load();h.splice(i,1);store.save(h);render();}
+
+function fieldText(ii){
+  if(ii==="situ") return rec.situText;
+  const r=rec.items[ii];
+  return `${r.score??""}点。${r.text}`;
+}
+async function copyText(btn,ii){
+  try{
+    await navigator.clipboard.writeText(fieldText(ii));
+    btn.classList.add("copied");btn.textContent="コピー済";
+    setTimeout(()=>{btn.classList.remove("copied");btn.textContent="コピー";},1500);
+  }catch(e){toast("コピーできませんでした");}
+}
+async function copyAll(){
+  const total=rec.items.reduce((a,r)=>a+(r.score||0),0);
+  const lines=[
+    `実施日：${rec.date}`,`講師名：${rec.koushi}`,`講義名：${rec.kougi}`,``,
+    ...ITEMS.map((it,ii)=>`${it.num}${it.name}（${rec.items[ii].score??"-"}/10）\n${rec.items[ii].text}`),
+    `⑦講義の状況\n${rec.situText}`,``,`合計：${total}/60`];
+  try{await navigator.clipboard.writeText(lines.join("\n"));toast("全文をコピーしました");}
+  catch(e){toast("コピーできませんでした");}
+}
+function dl(name,obj){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:"application/json"}));
+  a.download=name;a.click();URL.revokeObjectURL(a.href);
+}
+function exportOne(){dl(`評価_${rec.koushi||"無名"}_${rec.date}.json`,rec);}
+function exportAll(){dl(`講師評価_全履歴_${new Date().toISOString().slice(0,10)}.json`,store.load());}
+
+render();
+</script>
+</body>
+</html>
