@@ -82,7 +82,7 @@
 <body>
 <header><div class="wrap">
   <h1>講師評価支援ツール</h1>
-  <span class="sub">講習会派遣者用｜7点＝標準（安定した講義）を基準とした査定</span>
+  <span class="sub">講習会派遣者用｜7点＝標準｜結果はメール送信（端末に保存されません）</span>
 </div></header>
 <div class="wrap">
   <div class="steps" id="steps"></div>
@@ -266,9 +266,10 @@ let step = 0; const TOTAL = 9;
 const $ = s=>document.querySelector(s);
 const esc = s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove("show"),1800);}
-const store = {
-  load(){ try{ return JSON.parse(localStorage.getItem("hyouka_hist")||"[]"); }catch(e){ return this._m||[]; } },
-  save(l){ try{ localStorage.setItem("hyouka_hist", JSON.stringify(l)); }catch(e){ this._m=l; } }
+const DEFAULT_MAIL = "iwata@chiiki-net.com";
+const mailStore = {
+  load(){ try{ return localStorage.getItem("hyouka_mailto")||DEFAULT_MAIL; }catch(e){ return this._m||DEFAULT_MAIL; } },
+  save(v){ try{ localStorage.setItem("hyouka_mailto", v); }catch(e){ this._m=v; } }
 };
 
 /* ---------- 採点・文章生成 ---------- */
@@ -313,12 +314,18 @@ function genSituText(){
     if(si!=null){const o=it.aspects[ai].opts[si]; if(o.s>=9) goods.push(o.g);}
   }));
   if(goods.length) blocks.push("良かった点として、"+goods.slice(0,2).join("。")+"。");
-  // 4) 課題・申し送り（フラグ）
+  // 4) 課題・申し送り（フラグ・記号は「・」で統一）
   const flags=[];
   ITEMS.forEach((it,ii)=>rec.items[ii].sel.forEach((si,ai)=>{
-    if(si!=null){const o=it.aspects[ai].opts[si]; if(o.f) flags.push(`${it.num}${o.f}`);}
+    if(si!=null){const o=it.aspects[ai].opts[si]; if(o.f) flags.push(o.f);}
   }));
-  if(flags.length) blocks.push("申し送り事項："+flags.join("／")+"。");
+  if(flags.length) blocks.push("申し送り事項：\n"+flags.map(f=>"・"+f).join("\n"));
+  // 4.5) 次回に向けてのアドバイス（選択肢の改善提案文から生成）
+  const adv=[];
+  ITEMS.forEach((it,ii)=>rec.items[ii].sel.forEach((si,ai)=>{
+    if(si!=null){const o=it.aspects[ai].opts[si]; if(o.i && !adv.includes(o.i)) adv.push(o.i);}
+  }));
+  if(adv.length) blocks.push("次回に向けて："+adv.join("。")+"。");
   // 5) 運営対応
   if(rec.opsText.trim()) blocks.push("運営対応として、"+rec.opsText.trim()+"。");
   // 6) 締め
@@ -334,7 +341,8 @@ function genSituText(){
 function renderSteps(){
   $("#steps").innerHTML = Array.from({length:TOTAL},(_,i)=>`<span class="${i<step?'done':i===step?'now':''}"></span>`).join("");
 }
-function render(){
+function render(keepScroll){
+  const y = keepScroll ? window.scrollY : 0;
   renderSteps();
   const scr=$("#screen"), nav=$("#nav");
   if(step===0) renderBasic(scr);
@@ -342,17 +350,16 @@ function render(){
   else if(step===7) renderSitu(scr);
   else renderConfirm(scr);
   let html = step>0 ? `<button class="btn ghost" onclick="go(-1)">← 戻る</button>` : `<span></span>`;
-  html += step<8 ? `<button class="btn primary" onclick="go(1)">次へ →</button>` : `<button class="btn amber" onclick="saveRec()">この評価を保存</button>`;
+  html += step<8 ? `<button class="btn primary" onclick="go(1)">次へ →</button>` : `<button class="btn amber" onclick="sendMail()">メールで送信</button>`;
   nav.innerHTML=html;
-  window.scrollTo({top:0});
+  window.scrollTo({top:y});
 }
 
 function renderBasic(scr){
-  const hist=store.load();
   scr.innerHTML=`
   <div class="card">
     <h2>基本情報</h2>
-    <p class="desc">講師名・講義名（科目）は毎回手入力します。</p>
+    <p class="desc">講師名・講義名（科目）は毎回手入力します。評価データは端末には保存されず、最後にメールで送信します。</p>
     <label class="fld">実施日</label>
     <input type="text" id="f-date" value="${esc(rec.date)}">
     <label class="fld">講師名</label>
@@ -361,18 +368,7 @@ function renderBasic(scr){
     <input type="text" id="f-kougi" value="${esc(rec.kougi)}" placeholder="例：電気工学／施工管理法（午前） など">
     <label class="fld">使用機材・講義スタイル（複数選択可・⑦の冒頭に自動反映）</label>
     <div class="chips">${EQUIP.map((e,i)=>`<button class="${rec.equip[i]?'sel':''}" onclick="equip(${i})">${esc(e)}</button>`).join("")}</div>
-  </div>
-  ${hist.length?`
-  <div class="card">
-    <h2>保存済みの評価（この端末）</h2>
-    <div>${hist.map((h,i)=>`
-      <div class="hist-row">
-        <div class="meta"><b>${esc(h.koushi)}｜${esc(h.kougi)}</b><small>${esc(h.date)}　合計 ${h.total??"-"}/60</small></div>
-        <button class="mini" onclick="loadHist(${i})">開く</button>
-        <button class="mini" onclick="delHist(${i})">削除</button>
-      </div>`).join("")}</div>
-    <button class="mini" onclick="exportAll()">全履歴をJSONでダウンロード</button>
-  </div>`:""}`;
+  </div>`;
   ["date","koushi","kougi"].forEach(k=>$( `#f-${k}`).addEventListener("input",e=>rec[k]=e.target.value));
 }
 
@@ -455,12 +451,14 @@ function renderConfirm(scr){
       <div class="cf-head"><b>⑦ 講義の状況</b><button class="copybtn" onclick="copyText(this,'situ')">コピー</button></div>
       <div class="cf-text">${esc(rec.situText)||"<i>（記載なし）</i>"}</div>
     </div>
-    <div class="notice">Microsoft Forms へは各項目の「コピー」→ Forms の回答欄へ貼り付け。「全文コピー」で一括コピーも可能です。</div>
+    <label class="fld">送信先メールアドレス（変更すると次回以降も記憶されます）</label>
+    <input type="text" id="f-mail" value="${esc(mailStore.load())}" inputmode="email" placeholder="${DEFAULT_MAIL}">
+    <div class="notice">「メールで送信」でメールアプリが起動します（宛先・件名・本文は自動入力／本文はFormsの設問順）。本文が長くて途中で切れる場合は「全文コピー」して貼り付けてください。Forms へは届いたメールから各設問へコピペします。</div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="mini" onclick="copyAll()">全文コピー（Forms貼り付け用）</button>
-      <button class="mini" onclick="exportOne()">この評価をJSONでダウンロード</button>
     </div>
   </div>`;
+  $("#f-mail").addEventListener("input",e=>mailStore.save(e.target.value.trim()));
 }
 
 /* ---------- 操作 ---------- */
@@ -470,13 +468,13 @@ function go(d){
   if(step===7 && !rec.situText) rec.situText=genSituText();
   render();
 }
-function equip(i){rec.equip[i]=!rec.equip[i];render();}
+function equip(i){rec.equip[i]=!rec.equip[i];render(true);}
 function pick(ii,ai,oi){
   const r=rec.items[ii];
   r.sel[ai]=(r.sel[ai]===oi)?null:oi;
   if(!r.manualScore) r.score=calcScore(ii);
   r.text=genItemText(ii);
-  render();
+  render(true);
 }
 function manualScore(ii,v){
   rec.items[ii].score=+v; rec.items[ii].manualScore=true;
@@ -487,22 +485,26 @@ function regen(ii){
   rec.items[ii].text=genItemText(ii);
   rec.items[ii].manualScore=false;
   rec.items[ii].score=calcScore(ii);
-  render(); toast("再生成しました");
+  render(true); toast("再生成しました");
 }
-function situChk(i,on){rec.situ[i]=on;rec.situText=genSituText();render();}
+function situChk(i,on){rec.situ[i]=on;rec.situText=genSituText();render(true);}
 function situMin(k,v){rec.situMin[k]=v;rec.situText=genSituText();const t=$("#situ-text");if(t)t.value=rec.situText;}
-function regenSitu(){rec.situText=genSituText();render();toast("再生成しました");}
+function regenSitu(){rec.situText=genSituText();render(true);toast("再生成しました");}
 
-function saveRec(){
+function mailBody(){
   const total=rec.items.reduce((a,r)=>a+(r.score||0),0);
-  const hist=store.load();
-  hist.unshift({...JSON.parse(JSON.stringify(rec)),total,savedAt:new Date().toISOString()});
-  store.save(hist);
-  toast("保存しました");
-  rec=blank(); step=0; render();
+  const lines=[
+    `実施日：${rec.date}`,`講師名：${rec.koushi}`,`講義名：${rec.kougi}`,"",
+    ...ITEMS.map((it,ii)=>`【${it.num}${it.name}】${rec.items[ii].score??"-"}点\n${rec.items[ii].text}\n`),
+    `【⑦講義の状況】\n${rec.situText}`,"",`合計：${total}/60`];
+  return lines.join("\n");
 }
-function loadHist(i){const h=store.load()[i];if(!h)return;rec=JSON.parse(JSON.stringify(h));step=8;render();}
-function delHist(i){if(!confirm("この履歴を削除しますか？"))return;const h=store.load();h.splice(i,1);store.save(h);render();}
+function sendMail(){
+  const to = (mailStore.load()||DEFAULT_MAIL).trim() || DEFAULT_MAIL;
+  const subject = `講師評価_${rec.kougi||"科目未入力"}_${rec.koushi||"講師未入力"}_${rec.date}`;
+  const body = mailBody().replace(/\n/g,"\r\n");
+  location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 function fieldText(ii){
   if(ii==="situ") return rec.situText;
@@ -517,21 +519,9 @@ async function copyText(btn,ii){
   }catch(e){toast("コピーできませんでした");}
 }
 async function copyAll(){
-  const total=rec.items.reduce((a,r)=>a+(r.score||0),0);
-  const lines=[
-    `実施日：${rec.date}`,`講師名：${rec.koushi}`,`講義名：${rec.kougi}`,``,
-    ...ITEMS.map((it,ii)=>`${it.num}${it.name}（${rec.items[ii].score??"-"}/10）\n${rec.items[ii].text}`),
-    `⑦講義の状況\n${rec.situText}`,``,`合計：${total}/60`];
-  try{await navigator.clipboard.writeText(lines.join("\n"));toast("全文をコピーしました");}
+  try{await navigator.clipboard.writeText(mailBody());toast("全文をコピーしました");}
   catch(e){toast("コピーできませんでした");}
 }
-function dl(name,obj){
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:"application/json"}));
-  a.download=name;a.click();URL.revokeObjectURL(a.href);
-}
-function exportOne(){dl(`評価_${rec.koushi||"無名"}_${rec.date}.json`,rec);}
-function exportAll(){dl(`講師評価_全履歴_${new Date().toISOString().slice(0,10)}.json`,store.load());}
 
 render();
 </script>
